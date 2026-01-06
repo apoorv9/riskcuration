@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault Curator Analytics Dashboard v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 20%;
+            left: 20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0, 217, 255, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: 20%;
+            right: 20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            margin-bottom: 2.5rem;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00d9ff 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .timestamp {
+            padding: 0.75rem 1.25rem;
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .selector-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .selector-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+        }
+
+        .selector {
+            flex: 1;
+            min-width: 300px;
+            max-width: 500px;
+            padding: 1rem 1.25rem;
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 0.75rem;
+            color: #e2e8f0;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2300d9ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 20px;
+            padding-right: 3rem;
+        }
+
+        .selector:hover {
+            border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        .selector:focus {
+            outline: none;
+            border-color: #00d9ff;
+            box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .card:hover {
+            border-color: rgba(0, 217, 255, 0.4);
+            box-shadow: 0 10px 40px rgba(0, 217, 255, 0.1);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow-x: auto;
+            display: block;
+        }
+
+        .comparison-table thead {
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .comparison-table th {
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #00d9ff;
+            border-bottom: 2px solid rgba(0, 217, 255, 0.3);
+        }
+
+        .comparison-table th:first-child {
+            border-radius: 0.5rem 0 0 0;
+        }
+
+        .comparison-table th:last-child {
+            border-radius: 0 0.5rem 0 0;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .comparison-table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .comparison-table tbody tr:hover {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .curator-name {
+            font-weight: 700;
+            color: #e2e8f0;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .rank-badge {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #00d9ff 0%, #7c3aed 100%);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #0f172a;
+            margin-right: 0.5rem;
+        }
+
+        .positive-change {
+            color: #4ade80;
+        }
+
+        .negative-change {
+            color: #f87171;
+        }
+
+        .vault-count-pill {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: rgba(124, 58, 237, 0.2);
+            border: 1px solid rgba(124, 58, 237, 0.4);
+            border-radius: 999px;
+            font-size: 0.75rem;
+            color: #c084fc;
+        }
+
+        /* Rest of the previous styles remain the same */
+        .market-overview {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .market-overview.active {
+            display: block;
+        }
+
+        .curator-details {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .curator-details.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(0, 217, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 217, 255, 0.15);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: #e2e8f0;
+        }
+
+        .stat-change {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .stat-change.positive {
+            color: #4ade80;
+        }
+
+        .stat-change.negative {
+            color: #f87171;
+        }
+
+        .stat-subtext {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab:hover {
+            color: #e2e8f0;
+        }
+
+        .tab.active {
+            color: #00d9ff;
+            border-bottom-color: #00d9ff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .filters {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-btn {
+            padding: 0.65rem 1.25rem;
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 0.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            border-color: #00d9ff;
+            color: #00d9ff;
+        }
+
+        .filter-btn.active {
+            background: #00d9ff;
+            border-color: #00d9ff;
+            color: #0f172a;
+            box-shadow: 0 4px 20px rgba(0, 217, 255, 0.4);
+        }
+
+        .vault-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .vault-card:hover {
+            border-color: rgba(0, 217, 255, 0.5);
+            transform: translateX(4px);
+            box-shadow: 0 10px 40px rgba(0, 217, 255, 0.15);
+        }
+
+        .vault-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .vault-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+
+        .chain-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        .apy-display {
+            text-align: right;
+        }
+
+        .apy-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.25rem;
+        }
+
+        .apy-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: #4ade80;
+        }
+
+        .vault-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+        }
+
+        .detail-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            color: #e2e8f0;
+        }
+
+        .strategy-box {
+            background: rgba(15, 23, 42, 0.5);
+            border-left: 4px solid #00d9ff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .strategy-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .strategy-text {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        .features {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .feature-tag {
+            padding: 0.5rem 0.75rem;
+            background: rgba(124, 58, 237, 0.2);
+            border: 1px solid rgba(124, 58, 237, 0.4);
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #c084fc;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: #00d9ff;
+        }
+
+        .performance-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .performance-row:last-child {
+            border-bottom: none;
+        }
+
+        .performance-label {
+            color: #94a3b8;
+        }
+
+        .performance-value {
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            color: #e2e8f0;
+        }
+
+        .sankey-container {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .sankey-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .sankey-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .sankey-node {
+            flex: 1;
+            text-align: center;
+        }
+
+        .sankey-box {
+            padding: 2rem 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .sankey-box.yield {
+            background: rgba(148, 163, 184, 0.3);
+            border: 2px solid #94a3b8;
+        }
+
+        .sankey-box.revenue {
+            background: rgba(100, 116, 139, 0.3);
+            border: 2px solid #64748b;
+        }
+
+        .sankey-box.cost {
+            background: rgba(220, 38, 38, 0.2);
+            border: 2px solid #dc2626;
+        }
+
+        .sankey-box.profit {
+            background: rgba(34, 197, 94, 0.2);
+            border: 2px solid #22c55e;
+        }
+
+        .sankey-label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+
+        .sankey-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .sankey-percent {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
+        }
+
+        .sankey-arrow {
+            font-size: 2rem;
+            color: #64748b;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .vault-header {
+                flex-direction: column;
+                align-items: start;
+            }
+
+            .apy-display {
+                text-align: left;
+            }
+
+            .sankey-flow {
+                flex-direction: column;
+            }
+
+            .sankey-arrow {
+                transform: rotate(90deg);
+            }
+
+            .comparison-table {
+                font-size: 0.8rem;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 0.75rem 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <div>
+                    <h1 class="title">VAULT CURATOR ANALYTICS</h1>
+                    <p class="subtitle">Real-time DeFi vault performance tracking • Powered by DeFiLlama</p>
+                </div>
+                <div class="timestamp">
+                    Updated: Jan 6, 2026 | 02:45 UTC
+                </div>
+            </div>
+            <div class="selector-container">
+                <span class="selector-label">Select View</span>
+                <select id="curatorSelector" class="selector">
+                    <option value="">Master Comparison</option>
+                    <option value="gauntlet">Gauntlet ($1.24B TVL)</option>
+                    <option value="k3">K3 Capital ($294.7M TVL)</option>
+                    <option value="mev">MEV Capital ($240.4M TVL)</option>
+                    <option value="edge">UltraYield by Edge ($188.3M TVL)</option>
+                    <option value="hyperithm">Hyperithm ($174.5M TVL)</option>
+                    <option value="re7">RE7 Labs ($158.1M TVL)</option>
+                    <option value="tulipa">Tulipa Capital ($89.1M TVL)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Master Comparison Table -->
+        <div id="masterComparison" class="market-overview active">
+            <div class="card">
+                <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1.5rem;">🏆 Master Curator Comparison</h2>
+                
+                <div class="stats-grid" style="margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Market TVL</div>
+                        <div class="stat-value" style="color: #00d9ff;">$2.39B</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Annual Revenue</div>
+                        <div class="stat-value" style="color: #4ade80;">$4.93M</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Gross Profit</div>
+                        <div class="stat-value" style="color: #7c3aed;">$4.09M</div>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="comparison-table" id="comparisonTable">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Curator</th>
+                                <th>TVL</th>
+                                <th>Vaults</th>
+                                <th>Avg APY</th>
+                                <th>Fee Rate</th>
+                                <th>Annual Revenue</th>
+                                <th>Gross Profit</th>
+                                <th>Profit Margin</th>
+                                <th>Market Share</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparisonTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Curator Details -->
+        <div id="curatorDetails" class="curator-details">
+            <div class="stats-grid" id="statsGrid"></div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('vaults')">Vaults</button>
+                <button class="tab" onclick="switchTab('revenue')">Revenue</button>
+                <button class="tab" onclick="switchTab('performance')">Performance</button>
+            </div>
+
+            <div id="vaultsTab" class="tab-content active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 style="font-size: 1.5rem; font-weight: 700;">Active Vaults</h2>
+                    <div class="filters">
+                        <button class="filter-btn active" onclick="filterVaults('all')">All</button>
+                        <button class="filter-btn" onclick="filterVaults('ethereum')">Ethereum</button>
+                        <button class="filter-btn" onclick="filterVaults('base')">Base</button>
+                        <button class="filter-btn" onclick="filterVaults('solana')">Solana</button>
+                        <button class="filter-btn" onclick="filterVaults('other')">Other</button>
+                    </div>
+                </div>
+                <div id="vaultsList"></div>
+            </div>
+
+            <div id="revenueTab" class="tab-content">
+                <div class="income-statement" id="incomeStatement"></div>
+                
+                <div class="card">
+                    <h3 style="font-size: 1.3rem; font-weight: 600; margin-bottom: 1.5rem;">Quarterly Revenue Trend</h3>
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                    <div class="metric-card" id="feesCard"></div>
+                    <div class="metric-card" id="annualRevenueCard"></div>
+                    <div class="metric-card" id="monthlyRevenueCard"></div>
+                </div>
+            </div>
+
+            <div id="performanceTab" class="tab-content">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                    <div class="card">
+                        <h3 style="font-size: 1.3rem; font-weight: 600; margin-bottom: 1.5rem;">Performance Metrics</h3>
+                        <div id="performanceMetrics"></div>
+                    </div>
+                    <div class="card">
+                        <h3 style="font-size: 1.3rem; font-weight: 600; margin-bottom: 1.5rem;">Market Position</h3>
+                        <div id="marketPosition"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const curatorData = {
+            gauntlet: {
+                name: "Gauntlet",
+                tvl: "$1.244B",
+                tvlRaw: 1244351710,
+                avgAPY: "9.5%",
+                vaultCount: 40,
+                revenue30: "$150K",
+                revenueAnnual: "$1.81M",
+                revenueAnnualRaw: 1810000,
+                fees: "$30.6M",
+                feeRate: "5%",
+                grossProfit: 402811,
+                profitMargin: "22%",
+                marketShare: "52.1%",
+                change7d: "+2.3%",
+                change30d: "+8.1%",
+                incomeStatement: {
+                    assetsYields: 8790000,
+                    grossRevenue: 8790000,
+                    costOfRevenue: 8390000,
+                    grossProfit: 402811,
+                    earnings: 402811
+                },
+                quarterlyRevenue: [
+                    { quarter: 'Q1 2024', revenue: 19837 },
+                    { quarter: 'Q2 2024', revenue: 800104 },
+                    { quarter: 'Q3 2024', revenue: 6239 },
+                    { quarter: 'Q4 2024', revenue: 228186 },
+                    { quarter: 'Q1 2025', revenue: 521015 },
+                    { quarter: 'Q2 2025', revenue: 321745 },
+                    { quarter: 'Q3 2025', revenue: 500683 },
+                    { quarter: 'Q4 2025', revenue: 402811 }
+                ],
+                vaults: [
+                    // Morpho Prime Vaults (Low Risk)
+                    { name: "Gauntlet USDC Prime", chain: "Ethereum", asset: "USDC", apy: "8-10", tvl: "$120M+", protocol: "Morpho", strategy: "Conservative low-risk yields, minimal insolvency risk even under extreme conditions.", features: ["Prime tier", "Conservative", "Blue-chip"] },
+                    { name: "Gauntlet USDT Prime", chain: "Ethereum", asset: "USDT", apy: "7-9", tvl: "$85M+", protocol: "Morpho", strategy: "Prime stablecoin lending with capital preservation focus.", features: ["Prime tier", "Stable", "Low risk"] },
+                    { name: "Gauntlet DAI Prime", chain: "Ethereum", asset: "DAI", apy: "7.5-9.5", tvl: "$60M+", protocol: "Morpho", strategy: "DAI-focused conservative lending strategy.", features: ["Prime tier", "MakerDAO", "Conservative"] },
+                    
+                    // Morpho Core Vaults (Moderate Risk)
+                    { name: "Gauntlet USD Alpha (gtUSDa)", chain: "Base", asset: "USDC", apy: "7.49", tvl: "$72.74M", protocol: "Morpho", strategy: "Automatically rebalances across optimal USDC opportunities on multiple chains.", features: ["Guardian-processed", "Multi-chain", "Auto-compound"] },
+                    { name: "Gauntlet USDC Core", chain: "Ethereum", asset: "USDC", apy: "12.49", tvl: "$49.79M", protocol: "Morpho", strategy: "Blends large and lower-cap collateralized markets.", features: ["MORPHO rewards", "Resolv points", "Conservative"] },
+                    { name: "Gauntlet eUSD Core", chain: "Ethereum", asset: "eUSD", apy: "8.95", tvl: "$8.17M", protocol: "Morpho", strategy: "Liquid collateral markets with continuous optimization.", features: ["Prime tier", "8.65% rewards", "Low risk"] },
+                    { name: "Gauntlet USDS Core", chain: "Ethereum", asset: "USDS", apy: "9-11", tvl: "$55M+", protocol: "Morpho", strategy: "Sky Dollar (formerly DAI) optimized lending.", features: ["Sky Protocol", "Moderate", "Balanced"] },
+                    { name: "Gauntlet WETH Core", chain: "Ethereum", asset: "WETH", apy: "8-10", tvl: "$95M+", protocol: "Morpho", strategy: "ETH lending with LST collateral exposure.", features: ["ETH native", "LST markets", "Core tier"] },
+                    { name: "Gauntlet WBTC Core", chain: "Ethereum", asset: "WBTC", apy: "7-9", tvl: "$40M+", protocol: "Morpho", strategy: "Bitcoin-backed lending markets.", features: ["BTC exposure", "Core tier", "Moderate risk"] },
+                    { name: "Gauntlet USDC Balanced", chain: "Ethereum", asset: "USDC", apy: "10-12", tvl: "$180M+", protocol: "Morpho", strategy: "Balanced approach with strong liquidity maintenance.", features: ["Balanced", "High liquidity", "Stress-tested"] },
+                    { name: "Gauntlet Multi-Asset Core", chain: "Ethereum", asset: "Multi", apy: "9-13", tvl: "$65M+", protocol: "Morpho", strategy: "Diversified across multiple asset types.", features: ["Diversified", "Multi-asset", "Balanced"] },
+                    
+                    // Morpho Frontier Vaults (Higher Risk/Yield)
+                    { name: "Gauntlet USDC Frontier", chain: "Ethereum", asset: "USDC", apy: "14-18", tvl: "$45M+", protocol: "Morpho", strategy: "Higher volatility markets for greater supplier returns.", features: ["Frontier tier", "High yield", "Active mgmt"] },
+                    { name: "Gauntlet ETH Frontier", chain: "Ethereum", asset: "ETH", apy: "12-16", tvl: "$38M+", protocol: "Morpho", strategy: "Aggressive ETH lending with leverage opportunities.", features: ["Frontier tier", "Leverage", "High risk"] },
+                    { name: "Gauntlet LST Frontier", chain: "Ethereum", asset: "wstETH", apy: "10-14", tvl: "$50M+", protocol: "Morpho", strategy: "Liquid staking token markets with higher risk/return.", features: ["LST focus", "Frontier", "Staking yield"] },
+                    
+                    // Base Chain Vaults
+                    { name: "Gauntlet USDC Base Core", chain: "Base", asset: "USDC", apy: "9-11", tvl: "$90M+", protocol: "Morpho", strategy: "Base-native USDC lending opportunities.", features: ["Base chain", "L2 optimized", "Low fees"] },
+                    { name: "Gauntlet ETH Base", chain: "Base", asset: "ETH", apy: "8-10", tvl: "$35M+", protocol: "Morpho", strategy: "Base chain ETH lending markets.", features: ["Base chain", "ETH native", "L2"] },
+                    { name: "Gauntlet Multi Base", chain: "Base", asset: "Multi", apy: "10-13", tvl: "$28M+", protocol: "Morpho", strategy: "Diversified Base chain opportunities.", features: ["Base chain", "Multi-asset", "L2"] },
+                    
+                    // Specialized Stablecoin Vaults
+                    { name: "Gauntlet PYUSD Vault", chain: "Ethereum", asset: "PYUSD", apy: "8-10", tvl: "$25M+", protocol: "Morpho", strategy: "PayPal USD lending markets.", features: ["PYUSD", "PayPal backed", "Growing"] },
+                    { name: "Gauntlet USDR Vault", chain: "Ethereum", asset: "USDR", apy: "9-12", tvl: "$18M+", protocol: "Morpho", strategy: "Real-world asset backed stablecoin.", features: ["RWA backed", "Innovative", "Yield"] },
+                    { name: "Gauntlet USDQ Vault", chain: "Ethereum", asset: "USDQ", apy: "8.5-11", tvl: "$15M+", protocol: "Morpho", strategy: "Alternative stablecoin markets.", features: ["Alt stable", "Diversified", "Niche"] },
+                    { name: "Gauntlet USDL Vault", chain: "Ethereum", asset: "USDL", apy: "9-11.5", tvl: "$12M+", protocol: "Morpho", strategy: "Emerging stablecoin opportunities.", features: ["Emerging", "Growth", "Opportunistic"] },
+                    { name: "Gauntlet USDM Vault", chain: "Ethereum", asset: "USDM", apy: "8-10", tvl: "$20M+", protocol: "Morpho", strategy: "Mountain Protocol stablecoin lending.", features: ["USDM", "RWA yield", "Institutional"] },
+                    { name: "Gauntlet AUSD Vault", chain: "Ethereum", asset: "AUSD", apy: "9.5-12", tvl: "$16M+", protocol: "Morpho", strategy: "Agora Dollar lending markets.", features: ["AUSD", "Innovative", "High yield"] },
+                    { name: "Gauntlet USDA Vault", chain: "Ethereum", asset: "USDA", apy: "8.5-11", tvl: "$14M+", protocol: "Morpho", strategy: "Alternative dollar stablecoin.", features: ["Alt USD", "Diversified", "Stable"] },
+                    
+                    // RWA & Specialized Vaults
+                    { name: "Gauntlet Apollo RWA Vault", chain: "Ethereum", asset: "ACRED", apy: "10-13", tvl: "$45M+", protocol: "Morpho", strategy: "Tokenized private credit with Morpho leverage looping.", features: ["RWA", "Private credit", "Institutional"] },
+                    { name: "Gauntlet Securitize Vault", chain: "Ethereum", asset: "RWA", apy: "9-11", tvl: "$32M+", protocol: "Morpho", strategy: "Real-world asset collateralized lending.", features: ["RWA", "Securitize", "Institutional"] },
+                    
+                    // Polygon PoS Vaults
+                    { name: "Gauntlet USDC Polygon", chain: "Polygon", asset: "USDC", apy: "11-14", tvl: "$55M+", protocol: "Morpho", strategy: "Polygon-native USDC lending with POL incentives.", features: ["Polygon", "POL rewards", "High APY"] },
+                    { name: "Gauntlet USDT Polygon", chain: "Polygon", asset: "USDT", apy: "10-13", tvl: "$42M+", protocol: "Morpho", strategy: "Polygon USDT markets with Compound governance.", features: ["Polygon", "COMP rewards", "Fast"] },
+                    { name: "Gauntlet ETH Polygon", chain: "Polygon", asset: "WETH", apy: "9-12", tvl: "$28M+", protocol: "Morpho", strategy: "Polygon ETH lending opportunities.", features: ["Polygon", "ETH", "Low fees"] },
+                    
+                    // Drift Protocol Vaults (Solana)
+                    { name: "Gauntlet hJLP Core", chain: "Solana", asset: "SOL", apy: "12-16", tvl: "$85M+", protocol: "Drift", strategy: "Hedged JLP strategy mitigating perp exchange risks.", features: ["Solana", "Drift", "Hedged"] },
+                    { name: "Gauntlet Basis Alpha (GBA)", chain: "Solana", asset: "SOL", apy: "15-20", tvl: "$62M+", protocol: "Drift", strategy: "Funding rate arbitrage via spot-perp basis trading.", features: ["Solana", "Basis trade", "Alpha"] },
+                    { name: "Gauntlet SOL Strategy", chain: "Solana", asset: "SOL", apy: "10-14", tvl: "$48M+", protocol: "Drift", strategy: "Solana-native yield optimization.", features: ["Solana", "SOL native", "DeFi"] },
+                    { name: "Gauntlet DFDV Vault", chain: "Solana", asset: "SOL", apy: "13-17", tvl: "$35M+", protocol: "Drift", strategy: "Public SOL DAT with advanced DeFi strategies.", features: ["Solana", "Public DAT", "Institutional"] },
+                    
+                    // Symbiotic Restaking Vaults
+                    { name: "Gauntlet wstETH Restaking", chain: "Ethereum", asset: "wstETH", apy: "9-12", tvl: "$75M+", protocol: "Symbiotic", strategy: "Maximizes network allocations with minimal slashing risk.", features: ["Restaking", "wstETH", "Points"] },
+                    { name: "Gauntlet cbETH Restaking", chain: "Ethereum", asset: "cbETH", apy: "8.5-11", tvl: "$42M+", protocol: "Symbiotic", strategy: "Coinbase ETH restaking optimization.", features: ["Restaking", "cbETH", "Points"] },
+                    { name: "Gauntlet rETH Restaking", chain: "Ethereum", asset: "rETH", apy: "8-10.5", tvl: "$38M+", protocol: "Symbiotic", strategy: "Rocket Pool ETH restaking.", features: ["Restaking", "rETH", "RP rewards"] },
+                    { name: "Gauntlet Multi-LST Restaking", chain: "Ethereum", asset: "Multi-LST", apy: "9-13", tvl: "$55M+", protocol: "Symbiotic", strategy: "Diversified LST restaking across networks.", features: ["Restaking", "Multi-LST", "Diversified"] },
+                    
+                    // Kamino (Solana)
+                    { name: "Gauntlet Kamino Strategy", chain: "Solana", asset: "Multi", apy: "11-15", tvl: "$40M+", protocol: "Kamino", strategy: "Largest Solana lending platform optimization.", features: ["Solana", "Kamino", "Liquidity"] },
+                    
+                    // Pendle Integration
+                    { name: "Gauntlet Pendle USDC", chain: "Ethereum", asset: "USDC", apy: "10-14", tvl: "$32M+", protocol: "Pendle", strategy: "Fixed yield + upside exposure via Pendle.", features: ["Pendle", "Fixed yield", "Upside"] },
+                    { name: "Gauntlet Pendle PT Strategy", chain: "Ethereum", asset: "PT", apy: "9-13", tvl: "$25M+", protocol: "Pendle", strategy: "Principal token strategies for yield optimization.", features: ["Pendle", "PT tokens", "Yield"] }
+                ]
+            },
+            mev: {
+                name: "MEV Capital",
+                tvl: "$240.4M",
+                tvlRaw: 240420251,
+                avgAPY: "8.5%",
+                vaultCount: 8,
+                revenue30: "$50.7K",
+                revenueAnnual: "$1.63M",
+                revenueAnnualRaw: 1630000,
+                fees: "$11.89M",
+                feeRate: "10%",
+                grossProfit: 608913,
+                profitMargin: "37%",
+                marketShare: "10.1%",
+                change7d: "-0.5%",
+                change30d: "+3.1%",
+                incomeStatement: {
+                    assetsYields: 6110000,
+                    grossRevenue: 6110000,
+                    costOfRevenue: 5500000,
+                    grossProfit: 608913,
+                    earnings: 608913
+                },
+                quarterlyRevenue: [
+                    { quarter: 'Q3 2024', revenue: 116977 },
+                    { quarter: 'Q4 2024', revenue: 411742 },
+                    { quarter: 'Q1 2025', revenue: 983733 },
+                    { quarter: 'Q2 2025', revenue: 440936 },
+                    { quarter: 'Q3 2025', revenue: 832057 },
+                    { quarter: 'Q4 2025', revenue: 608913 }
+                ],
+                vaults: [
+                    { name: "MEV Capital USDC Vault", chain: "Ethereum", asset: "USDC", apy: "9-12", tvl: "$85M", protocol: "Morpho", strategy: "Liquid collateral markets with active rebalancing and risk optimization.", features: ["Active rebalancing", "Risk-optimized", "Liquid markets"] },
+                    { name: "MEV Capital Usual Boosted USDC", chain: "Ethereum", asset: "USDC", apy: "11-14", tvl: "$42M", protocol: "Morpho", strategy: "Extra Usual protocol incentives to boost USDC APR for borrowers. Stable markets minimizing liquidation risk.", features: ["Usual incentives", "Leverage loopers", "Stable"] },
+                    { name: "MEV Capital Resolv USR", chain: "Ethereum", asset: "USR", apy: "8-11", tvl: "$28M", protocol: "Morpho", strategy: "Resolv stablecoin markets with optimized yield.", features: ["USR markets", "Resolv protocol", "Stablecoin"] },
+                    { name: "MEV Capital USDC Prime", chain: "Ethereum", asset: "USDC", apy: "7-9", tvl: "$35M", protocol: "Morpho", strategy: "Conservative prime-tier USDC lending.", features: ["Prime tier", "Conservative", "Low risk"] },
+                    { name: "MEV Capital Usual Boosted USDT", chain: "Ethereum", asset: "USDT", apy: "10-13", tvl: "$18M", protocol: "Morpho", strategy: "USDT markets with Usual protocol collaboration.", features: ["Usual collab", "USDT", "Boosted APY"] },
+                    { name: "MEV Capital wETH Vault", chain: "Ethereum", asset: "WETH", apy: "8-11", tvl: "$22M", protocol: "Morpho", strategy: "ETH lending with LST collateral exposure.", features: ["ETH markets", "LST exposure", "Active"] },
+                    { name: "MEV Capital wBTC Vault", chain: "Ethereum", asset: "WBTC", apy: "7-10", tvl: "$8M", protocol: "Morpho", strategy: "Bitcoin-backed lending optimization.", features: ["BTC exposure", "Optimized", "Liquid"] },
+                    { name: "MEV Capital Elixir USDC", chain: "Ethereum", asset: "USDC", apy: "9-12", tvl: "$2.4M", protocol: "Morpho", strategy: "Elixir protocol integration for enhanced yields.", features: ["Elixir", "Enhanced yield", "Innovation"] }
+                ]
+            },
+            // Other curators remain the same...
+            k3: {
+                name: "K3 Capital",
+                tvl: "$294.7M",
+                tvlRaw: 294707333,
+                avgAPY: "11.5%",
+                vaultCount: 15,
+                revenue30: "$47K",
+                revenueAnnual: "$730K",
+                revenueAnnualRaw: 730000,
+                fees: "$7.3M",
+                feeRate: "10%",
+                grossProfit: 566559,
+                profitMargin: "78%",
+                marketShare: "12.3%",
+                change7d: "+1.8%",
+                change30d: "+5.2%",
+                incomeStatement: {
+                    assetsYields: 5670000,
+                    grossRevenue: 5670000,
+                    costOfRevenue: 5100000,
+                    grossProfit: 566559,
+                    earnings: 566559
+                },
+                quarterlyRevenue: [
+                    { quarter: 'Q1 2025', revenue: 285732 },
+                    { quarter: 'Q2 2025', revenue: 412365 },
+                    { quarter: 'Q3 2025', revenue: 1120000 },
+                    { quarter: 'Q4 2025', revenue: 505145 }
+                ],
+                vaults: [
+                    { name: "K3 Capital USDT Meta Vault", chain: "Avalanche", asset: "USDT", apy: "12-15", tvl: "Est. $80M", protocol: "Term + Euler", strategy: "85% Term Finance fixed-rate + 15% Euler variable yield.", features: ["2,500 AVAX rewards", "Fixed+Variable", "Blue-chip"] },
+                    { name: "sBOLD by K3", chain: "Ethereum", asset: "BOLD", apy: "10-14", tvl: "46.2% market", protocol: "Liquity V2", strategy: "Tokenized stability pools. 60% wstETH, 30% wETH, 10% rETH.", features: ["ERC4626", "Pendle integration", "Auto-hedge"] }
+                ]
+            },
+            re7: {
+                name: "RE7 Labs",
+                tvl: "$158.1M",
+                tvlRaw: 158089424,
+                avgAPY: "18%",
+                vaultCount: 25,
+                revenue30: "$8.5K",
+                revenueAnnual: "$101.5K",
+                revenueAnnualRaw: 101500,
+                fees: "$1.03M",
+                feeRate: "18%",
+                grossProfit: 1910000,
+                profitMargin: "18%",
+                marketShare: "6.6%",
+                change7d: "-1.2%",
+                change30d: "+2.8%",
+                incomeStatement: {
+                    assetsYields: 7100000,
+                    grossRevenue: 10380000,
+                    costOfRevenue: 8470000,
+                    grossProfit: 1910000,
+                    earnings: 1910000
+                },
+                quarterlyRevenue: [
+                    { quarter: 'Q3 2024', revenue: 16390 },
+                    { quarter: 'Q4 2024', revenue: 52436 },
+                    { quarter: 'Q1 2025', revenue: 164066 },
+                    { quarter: 'Q2 2025', revenue: 601394 },
+                    { quarter: 'Q3 2025', revenue: 659334 },
+                    { quarter: 'Q4 2025', revenue: 485509 }
+                ],
+                vaults: [
+                    { name: "Re7 WETH Vault", chain: "Ethereum", asset: "WETH", apy: "8-11", tvl: "Est. $80M", protocol: "Morpho", strategy: "Lends ETH against LSTs/LRTs. Up to 7x leverage enabled.", features: ["LST/LRT focus", "7x leverage", "Incentives"] },
+                    { name: "Re7 Euler Avalanche", chain: "Avalanche", asset: "Multi", apy: "5.75-9", tvl: "$200M+", protocol: "Euler", strategy: "Largest Euler curator. 90% utilization, 12 asset pools.", features: ["Market leader", "66% share", "High util"] }
+                ]
+            },
+            edge: {
+                name: "UltraYield by Edge",
+                tvl: "$188.3M",
+                tvlRaw: 188274493,
+                avgAPY: "11.5%",
+                vaultCount: 6,
+                revenue30: "$1.8K",
+                revenueAnnual: "$22.1K",
+                revenueAnnualRaw: 22100,
+                fees: "$256.2K",
+                feeRate: "10%",
+                grossProfit: 22074,
+                profitMargin: "10%",
+                marketShare: "7.9%",
+                change7d: "+0.8%",
+                change30d: "+4.5%",
+                incomeStatement: {
+                    assetsYields: 220769,
+                    grossRevenue: 220769,
+                    costOfRevenue: 198691,
+                    grossProfit: 22074,
+                    earnings: 22074
+                },
+                quarterlyRevenue: [
+                    { quarter: 'Q3 2025', revenue: 14731 },
+                    { quarter: 'Q4 2025', revenue: 7343 }
+                ],
+                vaults: [
+                    { name: "Edge UltraYield USDC", chain: "Ethereum", asset: "USDC", apy: "10-13", tvl: "Est. $200M", protocol: "Morpho", strategy: "Market-neutral institutional-grade yield strategy.", features: ["Fixed 10% fee", "Market-neutral", "Institutional"] }
+                ]
+            },
+            tulipa: {
+                name: "Tulipa Capital",
+                tvl: "$89.1M",
+                tvlRaw: 89074088,
+                avgAPY: "10%",
+                vaultCount: 5,
+                revenue30: "$18.4K",
+                revenueAnnual: "$220.8K",
+                revenueAnnualRaw: 220800,
+                fees: "$659.7K",
+                feeRate: "10%",
+                grossProfit: 220834,
+                profitMargin: "95%",
+                marketShare: "3.7%",
+                change7d: "+1.1%",
+                change30d: "+6.2%",
+                incomeStatement: {
+                    assetsYields: 2320000,
+                    grossRevenue: 2320000,
+                    costOfRevenue: 2100000,
+                    grossProfit: 220834,
+                    earnings: 220834
+                },
+                quarterlyRevenue: [
+                    { quarter: 'Q1 2025', revenue: 28375 },
+                    { quarter: 'Q2 2025', revenue: 39878 },
+                    { quarter: 'Q3 2025', revenue: 102889 },
+                    { quarter: 'Q4 2025', revenue: 49692 }
+                ],
+                vaults: [
+                    { name: "Tulipa Capital Vault", chain: "Ethereum", asset: "USDC", apy: "10", tvl: "$89.1M", protocol: "Morpho", strategy: "Diversified lending across quality collateral markets.", features: ["Diversified", "Quality focus", "Conservative"] }
+                ]
+            },
+            hyperithm: {
+                name: "Hyperithm",
+                tvl: "$174.5M",
+                tvlRaw: 174521901,
+                avgAPY: "10%",
+                vaultCount: 8,
+                revenue30: "$30.7K",
+                revenueAnnual: "$368.2K",
+                revenueAnnualRaw: 368200,
+                fees: "$3.7M",
+                feeRate: "10%",
+                grossProfit: 368154,
+                profitMargin: "100%",
+                marketShare: "7.3%",
+                change7d: "+2.1%",
+                change30d: "+7.3%",
+                incomeStatement: {
+                    assetsYields: 3700000,
+                    grossRevenue: 3700000,
+                    costOfRevenue: 3330000,
+                    grossProfit: 368154,
+                    earnings: 368154
+                },
+                quarterlyRevenue: [
+                    { quarter: 'Q1 2025', revenue: 8896 },
+                    { quarter: 'Q2 2025', revenue: 26795 },
+                    { quarter: 'Q3 2025', revenue: 143232 },
+                    { quarter: 'Q4 2025', revenue: 197231 }
+                ],
+                vaults: [
+                    { name: "Hyperithm Vault", chain: "Ethereum", asset: "Various", apy: "10", tvl: "$174.5M", protocol: "Morpho", strategy: "Optimized yield across multiple asset classes.", features: ["Multi-asset", "Optimized", "Balanced"] }
+                ]
+            }
+        };
+
+        let currentFilter = 'all';
+        let revenueChart = null;
+
+        function formatCurrency(value) {
+            if (value >= 1000000) {
+                return '$' + (value / 1000000).toFixed(2) + 'M';
+            } else if (value >= 1000) {
+                return '$' + (value / 1000).toFixed(1) + 'K';
+            }
+            return '$' + value.toFixed(0);
+        }
+
+        function renderComparisonTable() {
+            const curators = Object.values(curatorData).sort((a, b) => b.tvlRaw - a.tvlRaw);
+            const tbody = document.getElementById('comparisonTableBody');
+            
+            tbody.innerHTML = curators.map((curator, idx) => {
+                return `
+                    <tr>
+                        <td><span class="rank-badge">#${idx + 1}</span></td>
+                        <td><span class="curator-name">${curator.name}</span></td>
+                        <td>${curator.tvl}</td>
+                        <td><span class="vault-count-pill">${curator.vaultCount}</span></td>
+                        <td>${curator.avgAPY}</td>
+                        <td>${curator.feeRate}</td>
+                        <td class="positive-change">${curator.revenueAnnual}</td>
+                        <td class="positive-change">${formatCurrency(curator.grossProfit)}</td>
+                        <td>${curator.profitMargin}</td>
+                        <td>${curator.marketShare}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderStats(curator) {
+            const statsGrid = document.getElementById('statsGrid');
+            const changeClass = curator.change30d.startsWith('+') ? 'positive' : 'negative';
+            
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">Total TVL</div>
+                    <div class="stat-value">${curator.tvl}</div>
+                    <div class="stat-change ${changeClass}">${curator.change30d} (30d)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Vaults</div>
+                    <div class="stat-value">${curator.vaultCount}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg APY</div>
+                    <div class="stat-value">${curator.avgAPY}</div>
+                    <div class="stat-change ${curator.change7d.startsWith('+') ? 'positive' : 'negative'}">${curator.change7d} (7d)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Annual Revenue</div>
+                    <div class="stat-value">${curator.revenueAnnual}</div>
+                    <div class="stat-subtext">Fee rate: ${curator.feeRate}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Market Share</div>
+                    <div class="stat-value">${curator.marketShare}</div>
+                    <div class="stat-subtext">Rank: #${Object.values(curatorData).sort((a, b) => b.tvlRaw - a.tvlRaw).findIndex(c => c.name === curator.name) + 1}</div>
+                </div>
+            `;
+        }
+
+        function renderVaults(curator) {
+            const vaultsList = document.getElementById('vaultsList');
+            const filteredVaults = curator.vaults.filter(vault => {
+                if (currentFilter === 'all') return true;
+                if (currentFilter === 'ethereum') return vault.chain.toLowerCase() === 'ethereum';
+                if (currentFilter === 'base') return vault.chain.toLowerCase() === 'base';
+                if (currentFilter === 'solana') return vault.chain.toLowerCase() === 'solana';
+                if (currentFilter === 'other') return !['ethereum', 'base', 'solana'].includes(vault.chain.toLowerCase());
+                return true;
+            });
+
+            if (filteredVaults.length === 0) {
+                vaultsList.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #94a3b8;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">No vaults found</h3>
+                        <p>Try a different filter</p>
+                    </div>
+                `;
+                return;
+            }
+
+            vaultsList.innerHTML = filteredVaults.map(vault => `
+                <div class="vault-card">
+                    <div class="vault-header">
+                        <div>
+                            <div class="vault-title">${vault.name}</div>
+                            <span class="chain-badge">
+                                <span>⛓️</span>
+                                <span>${vault.chain}</span>
+                            </span>
+                        </div>
+                        <div class="apy-display">
+                            <div class="apy-label">APY</div>
+                            <div class="apy-value">${vault.apy.includes('-') ? vault.apy.split('-')[1] : vault.apy}%</div>
+                        </div>
+                    </div>
+                    <div class="vault-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Asset</div>
+                            <div class="detail-value">${vault.asset}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">TVL</div>
+                            <div class="detail-value">${vault.tvl}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Protocol</div>
+                            <div class="detail-value">${vault.protocol}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Chain</div>
+                            <div class="detail-value">${vault.chain}</div>
+                        </div>
+                    </div>
+                    <div class="strategy-box">
+                        <div class="strategy-label">Strategy</div>
+                        <div class="strategy-text">${vault.strategy}</div>
+                    </div>
+                    <div class="features">
+                        ${vault.features.map(f => `<span class="feature-tag">${f}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderIncomeStatement(curator) {
+            const incomeStatement = document.getElementById('incomeStatement');
+            const is = curator.incomeStatement;
+            
+            const yieldPercent = 100;
+            const costPercent = (is.costOfRevenue / is.grossRevenue) * 100;
+            const profitPercent = (is.grossProfit / is.grossRevenue) * 100;
+
+            incomeStatement.innerHTML = `
+                <div class="sankey-container">
+                    <div class="sankey-title">Income Statement for ${curator.name}</div>
+                    <div class="sankey-flow">
+                        <div class="sankey-node">
+                            <div class="sankey-box yield">
+                                <div class="sankey-label">Assets Yields</div>
+                                <div class="sankey-value">${formatCurrency(is.assetsYields)}</div>
+                                <div class="sankey-percent">(${yieldPercent.toFixed(0)}%)</div>
+                            </div>
+                        </div>
+                        <div class="sankey-arrow">→</div>
+                        <div class="sankey-node">
+                            <div class="sankey-box revenue">
+                                <div class="sankey-label">Gross Protocol Revenue</div>
+                                <div class="sankey-value">${formatCurrency(is.grossRevenue)}</div>
+                            </div>
+                        </div>
+                        <div class="sankey-arrow">→</div>
+                        <div class="sankey-node">
+                            <div class="sankey-box cost">
+                                <div class="sankey-label">Cost of Revenue</div>
+                                <div class="sankey-value">${formatCurrency(is.costOfRevenue)}</div>
+                                <div class="sankey-percent">(${costPercent.toFixed(0)}%)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sankey-flow" style="justify-content: center;">
+                        <div class="sankey-node" style="max-width: 300px;">
+                            <div class="sankey-box profit">
+                                <div class="sankey-label">Gross Profit / Earnings</div>
+                                <div class="sankey-value">${formatCurrency(is.grossProfit)}</div>
+                                <div class="sankey-percent">(${profitPercent.toFixed(0)}%)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderRevenueChart(curator) {
+            const ctx = document.getElementById('revenueChart');
+            
+            if (revenueChart) {
+                revenueChart.destroy();
+            }
+
+            revenueChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: curator.quarterlyRevenue.map(d => d.quarter),
+                    datasets: [{
+                        label: 'Revenue ($)',
+                        data: curator.quarterlyRevenue.map(d => d.revenue),
+                        backgroundColor: 'rgba(0, 217, 255, 0.6)',
+                        borderColor: 'rgba(0, 217, 255, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#cbd5e1',
+                            borderColor: 'rgba(0, 217, 255, 0.5)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Revenue: ' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#94a3b8'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderMetricCards(curator) {
+            document.getElementById('feesCard').innerHTML = `
+                <div class="metric-label">Total Fees</div>
+                <div class="metric-value">${curator.fees}</div>
+            `;
+            document.getElementById('annualRevenueCard').innerHTML = `
+                <div class="metric-label">Annual Revenue</div>
+                <div class="metric-value">${curator.revenueAnnual}</div>
+            `;
+            document.getElementById('monthlyRevenueCard').innerHTML = `
+                <div class="metric-label">30-Day Revenue</div>
+                <div class="metric-value">${curator.revenue30}</div>
+            `;
+        }
+
+        function renderPerformance(curator) {
+            const curators = Object.values(curatorData).sort((a, b) => b.tvlRaw - a.tvlRaw);
+            const rank = curators.findIndex(c => c.name === curator.name) + 1;
+
+            document.getElementById('performanceMetrics').innerHTML = `
+                <div class="performance-row">
+                    <span class="performance-label">7-Day Change</span>
+                    <span class="performance-value">${curator.change7d}</span>
+                </div>
+                <div class="performance-row">
+                    <span class="performance-label">30-Day Change</span>
+                    <span class="performance-value">${curator.change30d}</span>
+                </div>
+                <div class="performance-row">
+                    <span class="performance-label">Average APY</span>
+                    <span class="performance-value">${curator.avgAPY}</span>
+                </div>
+                <div class="performance-row">
+                    <span class="performance-label">Fee Rate</span>
+                    <span class="performance-value">${curator.feeRate}</span>
+                </div>
+            `;
+
+            document.getElementById('marketPosition').innerHTML = `
+                <div class="performance-row">
+                    <span class="performance-label">Market Share</span>
+                    <span class="performance-value">${curator.marketShare}</span>
+                </div>
+                <div class="performance-row">
+                    <span class="performance-label">TVL Rank</span>
+                    <span class="performance-value">#${rank}</span>
+                </div>
+                <div class="performance-row">
+                    <span class="performance-label">Total Vaults</span>
+                    <span class="performance-value">${curator.vaultCount}</span>
+                </div>
+                <div class="performance-row">
+                    <span class="performance-label">Total TVL</span>
+                    <span class="performance-value">${curator.tvl}</span>
+                </div>
+            `;
+        }
+
+        function loadCurator(curatorId) {
+            if (!curatorId) {
+                document.getElementById('masterComparison').classList.add('active');
+                document.getElementById('curatorDetails').classList.remove('active');
+                renderComparisonTable();
+                return;
+            }
+
+            const curator = curatorData[curatorId];
+            document.getElementById('masterComparison').classList.remove('active');
+            document.getElementById('curatorDetails').classList.add('active');
+
+            renderStats(curator);
+            renderVaults(curator);
+            renderIncomeStatement(curator);
+            renderRevenueChart(curator);
+            renderMetricCards(curator);
+            renderPerformance(curator);
+        }
+
+        function filterVaults(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const curatorId = document.getElementById('curatorSelector').value;
+            if (curatorId) {
+                renderVaults(curatorData[curatorId]);
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        document.getElementById('curatorSelector').addEventListener('change', (e) => {
+            loadCurator(e.target.value);
+        });
+
+        // Initialize
+        renderComparisonTable();
+    </script>
+</body>
+</html>
